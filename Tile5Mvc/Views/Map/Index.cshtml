@@ -1,0 +1,80 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Tile5Map</title>
+    <script type="application/javascript" src="@Url.Content("~/Scripts/jquery-1.5.1.js")"></script>
+    <script type="application/javascript" src="@Url.Content("~/Scripts/tile5.js")"></script>
+    <script type="application/javascript" src="@Url.Content("~/Scripts/geo/osm.js")"></script>
+    <script type="application/javascript" src="@Url.Content("~/Scripts/style/map-overlays.js")"></script>
+    <script type="text/javascript">
+        var map;
+
+        $(document).ready(function () {
+            var startPosition = T5.Geo.Position.parse("-27.43247,153.065654");
+
+            // initialise the map
+            map = new T5.Map({
+                container: 'mapCanvas',
+                boundsChangeThreshold: 5
+            });
+
+            map.setLayer('tiles', new T5.ImageLayer('osm.mapquest', {}));
+
+            // goto the specified position
+            map.gotoPosition(startPosition, 17, function () {
+                map.bind('boundsChange', function (evt, bounds) {
+                    requestUpdatedCadastre(bounds);
+                });
+            });
+        });
+
+        function requestUpdatedCadastre(bounds) {
+            $.ajax(
+            {
+                type: "POST",
+                url: "/Tile5Mvc/Map/RetrieveCadastre",
+                dataType: 'json',
+                data: JSON.stringify(bounds),
+                contentType: 'application/json; charset=utf-8',
+                success: function (result) {
+                    parseResponseCadastre(result)
+                },
+                error: function (req, status, error) {
+                    alert("Unable to get cadastral data");
+                }
+            });
+        }
+
+        function parseResponseCadastre(data) {
+            T5.GeoJSON.parse(
+            data.features,
+            function (layers) {
+                for (var layerId in layers) {
+                    addLayer(layerId, layers[layerId]);
+                }
+            }, {
+                rowPreParse: function (row) {
+                    return row.geometry;
+                }
+            });
+        }
+
+        function addLayer(layerId, layer) {
+            layer.style = 'area.parkland';
+            layer
+            map.setLayer(layerId, layer);
+        }
+    </script>
+</head>
+<body>
+    <div id="mapContainer" style="width: 800px; height: 550px;">
+        <canvas id="mapCanvas"></canvas>
+    </div>
+</body>
+</html>
+
